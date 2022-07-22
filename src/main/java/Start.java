@@ -2,16 +2,10 @@ import org.apache.spark.sql.*;
 import org.apache.spark.sql.api.java.UDF2;
 import org.apache.spark.sql.types.DataTypes;
 import scala.collection.Seq;
-
-
 import java.util.*;
-
-import
-        scala.collection.Iterator;
-//import scala.collection.immutable.List;
+import scala.collection.Iterator;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-
 import static org.apache.spark.sql.functions.*;
 
 public class Start {
