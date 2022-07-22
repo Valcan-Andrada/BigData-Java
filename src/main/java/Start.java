@@ -38,7 +38,7 @@ public class Start {
 
         Dataset<Row> sqlDF = spark.sql("SELECT * FROM erasmus where Participant_Age > 22");
 
-        sqlDF.show();
+        sqlDF.show(false);
 
         Dataset<Row> namesDF = spark.sql("SELECT Participant_Age FROM erasmus WHERE Participant_Age BETWEEN 22 AND 25");
         Dataset<String> namesDS = namesDF.map(new MapFunction<Row, String>() {
@@ -47,7 +47,7 @@ public class Start {
             }
         }, Encoders.STRING());
 
-        namesDS.show();
+        namesDS.show(false);
 
     }
 
