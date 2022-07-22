@@ -33,9 +33,9 @@ public class Start {
 
         UDF(os, spark);
 
-        os.createOrReplaceTempView("eramus");
+        os.createOrReplaceTempView("erasmus");
 
-        Dataset<Row> sqlDF = spark.sql("SELECT * FROM eramus");
+        Dataset<Row> sqlDF = spark.sql("SELECT * FROM erasmus where Participant_Age > 22");
 
         sqlDF.show();
 
