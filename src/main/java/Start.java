@@ -1,3 +1,4 @@
+import org.apache.spark.api.java.function.MapFunction;
 import org.apache.spark.sql.*;
 import org.apache.spark.sql.api.java.UDF2;
 import org.apache.spark.sql.types.DataTypes;
@@ -38,6 +39,15 @@ public class Start {
         Dataset<Row> sqlDF = spark.sql("SELECT * FROM erasmus where Participant_Age > 22");
 
         sqlDF.show();
+
+        Dataset<Row> namesDF = spark.sql("SELECT Participant_Age FROM erasmus WHERE Participant_Age BETWEEN 22 AND 25");
+        Dataset<String> namesDS = namesDF.map(new MapFunction<Row, String>() {
+            public String call(Row row) {
+                return row.getString(0);
+            }
+        }, Encoders.STRING());
+
+        namesDS.show();
 
     }
 
