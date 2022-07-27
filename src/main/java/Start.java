@@ -3,10 +3,14 @@ import org.apache.spark.sql.*;
 import org.apache.spark.sql.api.java.UDF2;
 import org.apache.spark.sql.types.DataTypes;
 import scala.collection.Seq;
+
 import java.util.*;
+
 import scala.collection.Iterator;
+
 import java.util.function.Function;
 import java.util.stream.Collectors;
+
 import static org.apache.spark.sql.functions.*;
 
 public class Start {
@@ -34,22 +38,48 @@ public class Start {
 
         UDF(os, spark);
 
+        //*********************************************************************************************
+        //TEMPORARY VIEW
+
+        //We have 4 options for register DataFrame as a temporary view
+        //1.createGlobalTempView
+        //2.createOrReplaceGlobalTempView
+        //3.createOrReplaceTempView
+        //4.createTempView
+
+        Properties prop = new Properties();
+        prop.setProperty("user", "postgres");
+        prop.setProperty("password", "dorecuhuso42");
+
+        os.write().mode(SaveMode.Overwrite).jdbc("jdbc:postgresql://localhost:5432/BigData", "erasmus", prop);
+
+
+        //register the dataframe as a SQL temporary view
         os.createOrReplaceTempView("erasmus");
 
-        Dataset<Row> sqlDF = spark.sql("SELECT * FROM erasmus where Participant_Age > 22");
+        spark.sql("SELECT * FROM erasmus where Receiving_Country_Code in ('LV','AT','RO') order by Receiving_Country_Code asc").write()
+                .mode(SaveMode.Overwrite).jdbc("jdbc:postgresql://localhost:5432/BigData", "sql_result", prop);
 
-        sqlDF.show(false);
 
-        Dataset<Row> namesDF = spark.sql("SELECT Participant_Age FROM erasmus WHERE Participant_Age BETWEEN 22 AND 25");
-        Dataset<String> namesDS = namesDF.map(new MapFunction<Row, String>() {
-            public String call(Row row) {
-                return row.getString(0);
-            }
-        }, Encoders.STRING());
-
-        namesDS.show(false);
+//
+//        Dataset<Row> namesDF = spark.sql("SELECT Participant_Age FROM erasmus WHERE Participant_Age BETWEEN 22 AND 25");
+//        Dataset<String> namesDS = namesDF.map(new MapFunction<Row, String>() {
+//            public String call(Row row) {
+//                return row.getString(0);
+//            }
+//        }, Encoders.STRING());
+//
+//        namesDS.show(false);
+//
+//        register dataframe as a global temporary view
+//        os.createGlobalTempView("my_table");
+//        // Global temporary view is tied to a system preserved database `global_temp`
+//        spark.sql("SELECT * FROM global_temp.my_table").show();
+//        // Global temporary view is cross-session
+//        spark.newSession().sql("SELECT * FROM global_temp.my_table").show();
 
     }
+
 
     private static void UDF(Dataset<Row> udfDataset, SparkSession spark) {
 
@@ -84,12 +114,12 @@ public class Start {
 
         spark.udf().register("groupingData", groupingData, DataTypes.StringType);
 
-        udfDataset = udfDataset.filter((udfDataset.col("Receiving Country Code").equalTo("RO"))
-                        .or(udfDataset.col("Receiving Country Code").equalTo("LV"))
-                        .or(udfDataset.col("Receiving Country Code").equalTo("AT")))
-                .groupBy(col("Receiving Country Code")).agg(collect_list("Sending Country Code")
-                        .as("Sending Country Code")).sort("Sending Country Code")
-                .withColumn("groupingData", callUDF("groupingData", col("Receiving Country Code"), col("Sending Country Code")));
+        udfDataset = udfDataset.filter((udfDataset.col("Receiving_Country_Code").equalTo("RO"))
+                        .or(udfDataset.col("Receiving_Country_Code").equalTo("LV"))
+                        .or(udfDataset.col("Receiving_Country_Code").equalTo("AT")))
+                .groupBy(col("Receiving_Country_Code")).agg(collect_list("Sending_Country_Code")
+                        .as("Sending_Country_Code")).sort("Sending_Country_Code")
+                .withColumn("groupingData", callUDF("groupingData", col("Receiving_Country_Code"), col("Sending_Country_Code")));
 
         udfDataset.show(false);
     }
@@ -114,10 +144,10 @@ public class Start {
         selected.add("RO");
         selected.add("LV");
 
-        os = os.filter(col("Receiving Country Code")
+        os = os.filter(col("Receiving_Country_Code")
                         .isin(selected.toArray()))
-                        .groupBy(col("Receiving Country Code"), col("Sending Country Code"))
-                        .count().sort("Receiving Country Code", "Sending Country Code");
+                .groupBy(col("Receiving_Country_Code"), col("Sending_Country_Code"))
+                .count().sort("Receiving_Country_Code", "Sending_Country_Code");
 
         saveToDatabase(os);
     }
@@ -130,20 +160,20 @@ public class Start {
 
         os.write().mode(SaveMode.Overwrite).jdbc("jdbc:postgresql://localhost:5432/BigData", "erasmus", prop);
 
-        Dataset<Row> LV = os.filter(os.col("Receiving Country Code").equalTo("LV"));
-        LV.select(col("Sending Country Code"), col("count"))
+        Dataset<Row> LV = os.filter(os.col("Receiving_Country_Code").equalTo("LV"));
+        LV.select(col("Sending_Country_Code"), col("count"))
                 .write()
                 .mode(SaveMode.Overwrite)
                 .jdbc("jdbc:postgresql://localhost:5432/BigData", "LV", prop);
 
-        Dataset<Row> RO = os.filter(os.col("Receiving Country Code").equalTo("RO"));
-        RO.select(col("Sending Country Code"), col("count"))
+        Dataset<Row> RO = os.filter(os.col("Receiving_Country_Code").equalTo("RO"));
+        RO.select(col("Sending_Country_Code"), col("count"))
                 .write()
                 .mode(SaveMode.Overwrite)
                 .jdbc("jdbc:postgresql://localhost:5432/BigData", "RO", prop);
 
-        Dataset<Row> AT = os.filter(os.col("Receiving Country Code").equalTo("AT"));
-        AT.select(col("Sending Country Code"), col("count"))
+        Dataset<Row> AT = os.filter(os.col("Receiving_Country_Code").equalTo("AT"));
+        AT.select(col("Sending_Country_Code"), col("count"))
                 .write()
                 .mode(SaveMode.Overwrite)
                 .jdbc("jdbc:postgresql://localhost:5432/BigData", "AT", prop);
